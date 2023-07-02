@@ -1,2 +1,2 @@
-# Wildberries_internship
+# Wildberries internship
 Assignments from the internship
