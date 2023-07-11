@@ -1,0 +1,353 @@
+\documentclass{beamer}
+\usepackage[cp1251]{inputenc}
+\usepackage[russian]{babel}
+\usepackage{mathtools, amsmath, mathrsfs, mathtext}
+\usepackage{calrsfs}
+\DeclareMathAlphabet{\pazocal}{OMS}{zplm}{m}{n}
+%\DeclareMathAlphabet{\mathcal}{OMS}{cmsy}{m}{n}
+\usepackage{graphicx, epsfig}
+\usepackage{tabularray}
+%\usepackage[table,xcdraw]{xcolor}
+\usepackage[labelsep=endash, singlelinecheck=false, belowskip=0pt]{caption}
+\usepackage{epstopdf}
+\usetheme{Warsaw}%{Singapore}%{Warsaw}%{Warsaw}%{Darmstadt}
+\usecolortheme{sidebartab}
+\definecolor{beamer@blendedblue}{RGB}{46,116,138}
+\usepackage{colortbl}
+%----------------------------------------------------------------------------------------------------------
+\newcommand\blfootnote[1]{%
+	\begingroup
+	\renewcommand\thefootnote{}\footnote{#1}%
+	\addtocounter{footnote}{-1}%
+	\endgroup
+}
+
+\renewcommand{\thempfootnote}{\ifcase\value{mpfootnote}\or\textasteriskcentered\or\textdagger\or\textdaggerdbl\fi}
+
+\title[\hbox to 56mm{Оптимизация путей доставки \hfill\insertframenumber\,/\,\inserttotalframenumber}]
+{Оптимизация путей доставки}
+\author[А. Матвеев]{\large \\Артём Матвеев}
+%\author[Р.\,Г. Болбаков]{\large \\Роман Геннадьевич Болбаков}
+%\author[И.\,А. Макаров]{\large \\Илья Андреевич Макаров}
+%\institute{\large
+%МИРЭА -- Российский технологический университет\par
+%Национальный исследовательский университет <<Высшая школа экономики>>}
+%\institute 
+%{
+%	\large
+%	\inst{1}%
+%	МИРЭА -- Российский технологический университет
+%	\and
+%	\inst{2}%
+%	Национальный исследовательский университет \\ <<Высшая школа экономики>>
+%}
+\date{\today}
+%----------------------------------------------------------------------------------------------------------
+\begin{document}
+%----------------------------------------------------------------------------------------------------------
+\begin{frame}
+	%\thispagestyle{empty}
+	\titlepage
+\end{frame}
+%-----------------------------------------------------------------------------------------------------
+%\begin{frame}{Актуальность и новизна}
+%	\begin{block}{Актуальность}
+%		Карты глубины применяются повсеместно -- беспилотный транспорт, VR и AR, робототехника, вычислительная фотография и т.д. Частое отсутствие доступа к большим вычислительным мощностям актуализирует разработку легковесных решений.
+%	\end{block}
+%	\begin{block}{Новизна}
+%		В данной обзорной работе представлены современные легковесные решения близкие к современным тяжеловесным моделям с точки зрения ряда метрик оценки качества.
+%	\end{block}
+%\end{frame}
+%-----------------------------------------------------------------------------------------------------
+\begin{frame}{Цель и задачи работы}
+	\begin{block}{Цель работы}
+		Найти оптимальную схему развоза товаров по ПВЗ\footnote{Пункт Выдачи Заказов} со склада в д. Коледино. 
+	\end{block}
+	\begin{block}{Задачи работы}
+		\begin{enumerate}
+			\item Выполнить анализ данных.
+			\item Формализовать поставленную задачу.
+			\item Исследовать имеющиеся решения данной проблемы.
+			\item Реализовать собственное решение.
+			\item Провести оценку полученных результатов.
+			\item Привести решение в читабельный вид. 
+		\end{enumerate}
+	\end{block}
+\end{frame}
+%----------------------------------------------------------------------------------------------------------
+\begin{frame}{Анализ данных}
+	\captionof{table}{Изначальные данные \label{tab:data}}
+	%\begin{table}[]
+%		\caption{Изначальные данные}
+%		\label{tab:my-table}
+		\resizebox{\linewidth}{!}{%
+			\begin{tabular}{|c|c|c|c|c|c|c|}
+				\hline
+				\textbf{count} & \textbf{max} & \textbf{max.1} & \textbf{dst\_office\_id} & \textbf{office\_name} & \textbf{latitude} & \textbf{longitude} \\ \hline
+				379 & 2023-04-24 & 507 & 105643 & МО Одинцово Садовая 24 & 55.676228 & 37.248839 \\ \hline
+				249 & 2023-04-24 & 507 & 133447 & МО Кашира Ленина 15 & 54.844701 & 38.191166 \\ \hline
+				345 & 2023-04-24 & 507 & 110999 & МО Одинцово Сколковская 1Б & 55.694942 & 37.324654 \\ \hline
+				591 & 2023-04-24 & 507 & 5807 & Подольск Победы 12 & 55.360190 & 37.512755 \\ \hline
+				322 & 2023-04-24 & 507 & 3300 & МО Свердловский Строителей 22 & 55.903330 & 38.155216 \\ \hline
+			\end{tabular}%
+		}
+	%\end{table}
+	
+	\begin{columns}
+		\begin{column}{0.5\textwidth}
+			\includegraphics[height=5.5cm, width=5cm]{images/load_distribution.eps}
+		\end{column}
+		\begin{column}{0.6\textwidth}  %%<--- here
+			\captionof{table}{Совпадающие координаты \label{tab:data_lat_long}}
+			% Please add the following required packages to your document preamble:
+			% \usepackage{graphicx}
+			%\begin{table}[]
+				\resizebox{\textwidth}{!}{%
+					\begin{tabular}{|c|c|c|}
+						\hline
+						\textbf{office\_name}       & \textbf{latitude} & \textbf{longitude} \\ \hline
+						МСК Лётчика Бабушкина 6     & 55.859200         & \cellcolor{blue!30} 37.674346          													 \\ \hline
+						МСК Ягодная 8к3             & 55.575078         & \cellcolor{blue!30} 37.674346                                                            \\ \hline
+						МО Королёв Тихонравова 44/2 & 55.937060         & \cellcolor{green!30} 37.853607                                                            \\ \hline
+						МСК Николая Старостина 9    & 55.731524         & \cellcolor{green!30} 37.853607                                                            \\ \hline
+					\end{tabular}%
+				}
+			%\end{table}
+		\end{column}
+	\end{columns}
+\end{frame}
+%----------------------------------------------------------------------------------------------------------
+\begin{frame}{Формализация задачи. Часть 1}
+	Capacitated Vehicle Routing Problem (CVRP)
+	\begin{block}{Дано}
+		\begin{enumerate}
+			\item $G = (N, E)$ -- полный граф, где:
+			\begin{itemize}
+				\item $N = \{0, \dots, n\}$ -- множество вершин.
+				\item $E = \{(i, j) \colon i, j \in V\}$ -- множество рёбер.
+				\begin{itemize}
+					\item $i \in N'$ -- ПВЗ, $N' = N \setminus \{0\}$.
+				\end{itemize}
+			\end{itemize}
+			\item $V = \{1, \dots, k\}$ -- множество транспортных средств (ТС).
+			\item $Q$ -- максимальная загруженность ТС.
+			\item $m_i$ -- загруженность конкретного ПВЗ, $i = \{1, \dots, n\}$.
+			\item $d_{ij}$ -- расстояние между двумя вершинами, $d_{ij} > 0$.
+			\item Решающая переменная \[x_{ijk} =
+				\begin{cases}
+					1,&\text{если ТС $k$ едет от $i$ до $j$}\\
+					0,&\text{иначе}
+				\end{cases}\]
+		\end{enumerate}
+	\end{block}
+\end{frame}
+%----------------------------------------------------------------------------------------------------------
+\begin{frame}{Формализация задачи. Часть 2}
+	\begin{block}{Найти}
+		$\text{Minimize} \sum\limits_{k \in V} \sum\limits_{i \in N} \sum\limits_{j \in N} d_{ij} \cdot x_{ijk},$
+		
+		при условиях:
+		\begin{enumerate}
+			\item $\sum\limits_{k \in V} \sum\limits_{i \in N} x_{ijk} = 1, \forall j \in N$
+			\item $\sum\limits_{k \in V} \sum\limits_{j \in N} x_{ijk} = 1, \forall i \in N$
+			\item $\sum\limits_{i \in N} m_i \sum\limits_{j \in N} x_{ijk} \leq Q$
+			\item $\sum\limits_{j \in N} x_{0jk} = 1, \forall k \in V$
+			\item $\sum\limits_{i \in N} x_{i0k} = 1, \forall k \in V$
+			\item $\sum\limits_{i \in N} x_{ihk} - \sum\limits_{j \in N} x_{hjk} = 0, \forall h \in N, \forall k \in V$
+			\item $x_{ijk} = \{0, 1\}, i \neq j, \forall i, j \in N, \forall k \in V$
+		\end{enumerate}
+	\end{block}
+\end{frame}
+%----------------------------------------------------------------------------------------------------------
+\begin{frame}{Решение задачи}
+	\[
+	\begin{pmatrix}
+		0 & 38 & 71 & \ldots & 31 & 92 & 110\\
+		38 & 0 & 110 & \ldots & 34 & 98 & 91\\
+		71 & 110 & 0 & \ldots & 91 & 120 & 165\\
+		\vdots & \vdots & \vdots & \ddots & \vdots & \vdots & \vdots \\
+		31 & 34 & 91 & \ldots & 0 & 67 & 79\\
+		92 & 98 & 120 & \ldots & 67 & 0 & 64\\
+		110 & 91 & 165 & \ldots & 79 & 64 & 0\\
+	\end{pmatrix}
+	\]
+\end{frame}
+%----------------------------------------------------------------------------------------------------------
+\begin{frame}{Особенности FastDepth}
+	\begin{itemize}
+		\item Компилятор TVM\footnotemark для внедрения модели на конкретное железо.
+		\item Урезание сети после обучения с помощью алгоритма NetAdapt\footnotemark.
+	\end{itemize}
+	\includegraphics[height=2.1cm, width=\textwidth]{images/wofk_architecture.png}
+	
+	\footnotetext[3]{\tiny{Tianqi Chen, Thierry Moreau, Ziheng Jiang, et al. TVM: An Automated End-to-End Optimizing Compiler for Deep Learning. 2018.}}
+	
+	\footnotetext[4]{\tiny{Tien-Ju Yang, Andrew Howard, Bo Chen, et al. NetAdapt: Platform-Aware Neural Network Adaptation for Mobile Applications. 2018.}}
+\end{frame}
+%----------------------------------------------------------------------------------------------------------
+\begin{frame}{Результаты экспериментов. FastDepth}
+	\begin{center}
+		\includegraphics[height=4cm, width=\textwidth]{images/wofk_results.png}
+	\end{center}
+	%\bibliography{sources.bib}
+\end{frame}
+%----------------------------------------------------------------------------------------------------------
+\begin{frame}{Результаты экспериментов. FastDepth}
+	\begin{center}
+		\includegraphics[height=7cm, width=\textwidth]{images/wofk_depth_maps.png}
+	\end{center}
+\end{frame}
+%----------------------------------------------------------------------------------------------------------
+\begin{frame}{Постановка задачи. Hu J. и др.\footnotemark}
+	\textbf{\textcolor{beamer@blendedblue}{Дано:}} 
+	
+	$X^{\ell} = (x_i, y_i)^{\ell}_{i = 1}$, $x_i \coloneqq I \in \mathbb{R}^{228 \times 304 \times 3}$, $y_i \coloneqq D^{*} \in \mathbb{R}^{228 \times 304 \times 1}$
+	
+	\textbf{\textcolor{beamer@blendedblue}{Найти}} модель $a \colon I \rightarrow D$, $D \in \mathbb{R}^{228 \times 304 \times 1}$
+	
+	\textbf{\textcolor{beamer@blendedblue}{Критерий:}} 
+	
+	$\mathcal{L}_{\text{\tiny{RMSE}}}(a, x) = \sqrt{\sum\limits_{a(x) \in D}{\frac{(a(x) - y(x))^2}{|D|}}}$
+	
+	$\mathcal{L}_{\delta_1}(a, x) = max\left(\frac{a(x)}{y(x)}, \frac{y(x)}{a(x)}\right) < 1.25$
+	
+	\textbf{\textcolor{beamer@blendedblue}{Критерий на этапе применения KD с вспомогательными данными:}} $\pazocal{L} = \frac{1}{X^{\ell}} \sum\limits_{p_i, g_i \in X^{\ell}}{(\lambda L(N_s(p_i), N_t(p_i)) + (1- \lambda) L(N_s(p_i), g_i))}$
+	
+	$p_i \equiv a(x_i)$, $g_i \equiv y(x_i)$
+	
+	$\pazocal{L}$ -- функция потерь для обучения сети-ученика.
+	
+	%$\chi$ -- набор размеченных данных.
+	
+	$N_t$ и $N_s$ -- сети учителя и ученика.
+	
+	$L = l_{\text{depth}} + l_{\text{grad}} + l_{\text{normal}}$, $L$ -- функция потерь из работы\footnotemark[6].
+	
+	\footnotetext[5]{\tiny{Junjie Hu, Chenyou Fan, Hualie Jiang, et al. Boosting Light-Weight Depth Estimation Via Knowledge Distillation. 2021.}}
+\end{frame}
+%----------------------------------------------------------------------------------------------------------
+\begin{frame}{Архитектура. Hu J. и др.}
+	Модель состоит из:
+	\begin{enumerate}
+		\item 4 слоя для слияния и сжатия признаков (FFC).
+		\begin{itemize}
+			\item Поканальный механизм внимания\footnotemark[7].
+			\item Слой свёртки.
+		\end{itemize}
+		\item Масштабирование карт признаков (upsampling).
+		\item Объединение карт признаков (concat).
+		\item Два свёрточных слоя $5 \times 5$ (convs). 
+	\end{enumerate}
+	
+	\includegraphics[height=2.1cm, width=\textwidth]{images/hu_architecture.png}
+	
+	\footnotetext[6]{\tiny{Junjie Hu, Mete Ozay, Yan Zhang, et al. Revisiting Single Image Depth Estimation: Toward Higher Resolution Maps with Accurate Object Boundaries. 2018.}}
+	\footnotetext[7]{\tiny{Jie Hu, Li Shen, et al. Squeeze-and-Excitation Networks. 2017.}}
+\end{frame}
+%----------------------------------------------------------------------------------------------------------
+\begin{frame}{Особенности модели. Hu J. и др.}
+	\begin{itemize}
+		\item Внедрение подхода дистилляции знаний (KD) с вспомогательными (auxiliary) данными.
+		\begin{itemize}
+			\item ResNet-34 в качестве основы (backbone) для сети-учителя.
+			\item MobileNet-v2 в качестве основы для сети-ученика.
+		\end{itemize}
+	\end{itemize}
+	
+	\begin{center}
+		\includegraphics[height=4cm, width=\textwidth]{images/hu_depth_diff.png}
+	\end{center}
+\end{frame}
+%----------------------------------------------------------------------------------------------------------
+\begin{frame}{Результаты экспериментов. Hu J. и др.}
+	\begin{center}
+		\includegraphics[height=2.75cm, width=\textwidth]{images/hu_results.png}
+	\end{center}
+\end{frame}
+%----------------------------------------------------------------------------------------------------------
+\begin{frame}{Результаты экспериментов. Hu J. и др.}
+	\begin{center}
+		\includegraphics[height=7.25cm, width=9cm]{images/hu_depth_maps.png}
+	\end{center}
+\end{frame}
+%\begin{frame}{Список источников}
+%	\bibliographystyle{agsm}
+%	\setbeamertemplate{bibliography item}{\insertbiblabel}
+%	\bibliography{sources.bib}
+%\end{frame}
+%----------------------------------------------------------------------------------------------------------
+\begin{frame}{Постановка задачи. DANet\footnotemark[8]}
+	\textbf{\textcolor{beamer@blendedblue}{Дано:}} 
+	
+	$X^{\ell} = (x_i, y_i)^{\ell}_{i = 1}$, $x_i \coloneqq I \in \mathbb{R}^{228 \times 304 \times 3}$, $y_i \coloneqq D^{*} \in \mathbb{R}^{228 \times 304 \times 1}$
+	
+	\textbf{\textcolor{beamer@blendedblue}{Найти:}} 
+	
+	модель $a \colon I \rightarrow D$, $D \in \mathbb{R}^{228 \times 304 \times 1}$
+	
+	$a(x_i) = \sum\limits_{n=1}^{N_b}{\mathbf{P}_i(n) \mathbf{c}(n)}$, где:
+	
+	$\mathbf{c} \in \mathbb{R}^{1 \times 1 \times N_b}$ -- центральные значения ячеек глубины (depth bins).
+	
+	$\mathbf{P} \in \mathbb{R}^{228 \times 304 \times N_b}$ -- карты вероятности ячеек (bin-probability maps).
+	
+	\textbf{\textcolor{beamer@blendedblue}{Критерий:}} 
+	
+	$\mathcal{L}_{\text{\tiny{RMSE}}}(a, x) = \sqrt{\sum\limits_{a(x) \in D}{\frac{(a(x) - y(x))^2}{|D|}}}$
+	
+	$\mathcal{L}_{\delta_1}(a, x) = max\left(\frac{a(x)}{y(x)}, \frac{y(x)}{a(x)}\right) < 1.25$ 
+	
+	\footnotetext[8]{\tiny{Fei Sheng, Feng Xue, Yicong Chang, et al. Monocular Depth Distribution Alignment with Low Computation. 2022.}}
+\end{frame}
+%----------------------------------------------------------------------------------------------------------
+\begin{frame}{Архитектура DANet}
+	Модель состоит из:
+	\begin{enumerate}
+		\item Энкодер (пирамидальный трансформер -- PST).
+		\item Декодер.
+	\end{enumerate}
+	
+	\begin{center}
+		\includegraphics[height=4cm, width=\textwidth]{images/sheng_architecture.png}
+	\end{center}
+\end{frame}
+%----------------------------------------------------------------------------------------------------------
+%\begin{frame}{Особенности DANet}
+%	\begin{itemize}
+%		\item Схема локально-глобальной оптимизации (LGO) для сопоставления локальных значений глубины с глобальным масштабом глубины.
+%	\end{itemize}
+%	
+%%	\begin{center}
+%%		\includegraphics[height=4cm, width=11.5cm]{images/sheng_architecture.png}
+%%	\end{center}
+%\end{frame}
+%----------------------------------------------------------------------------------------------------------
+\begin{frame}{Результаты экспериментов. DANet}
+	\begin{center}
+		\includegraphics[height=5.5cm, width=\textwidth]{images/sheng_results.png}
+	\end{center}
+\end{frame}
+%----------------------------------------------------------------------------------------------------------
+\begin{frame}{Результаты экспериментов. DANet}
+	\begin{center}
+		\includegraphics[height=7cm, width=\textwidth]{images/sheng_depth_maps.png}
+	\end{center}
+\end{frame}
+%----------------------------------------------------------------------------------------------------------
+\begin{frame}{Заключение}
+	В ходе выполнения работы были выполнены все поставленные задачи, то есть:
+	\begin{enumerate}
+		\item Проанализирована работа Wofk D. и др. (FastDepth).
+		\item Проанализирована работа Hu J. и др.
+		\item Проанализирована работа Sheng F. и др. (DANet).
+		%\item Предложить решение имеющихся проблем. 
+	\end{enumerate}
+\end{frame}
+%----------------------------------------------------------------------------------------------------------
+\begin{frame}
+	\vspace*{\fill}
+	\vspace*{0.5cm}
+	\centering \huge \textbf{СПАСИБО ЗА ВНИМАНИЕ!}
+	\vspace*{\fill}
+\end{frame}
+\end{document} 
